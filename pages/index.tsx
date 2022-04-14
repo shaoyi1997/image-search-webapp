@@ -4,10 +4,12 @@ import {
   Center,
   CircularProgress,
   Heading,
+  HStack,
   Input,
   InputGroup,
   InputLeftElement,
   SimpleGrid,
+  Skeleton,
   Text,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
@@ -41,23 +43,31 @@ const Home: NextPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [urls, setUrls] = useState<string[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const fetchImages = useCallback(async (searchTerm: string) => {
-    setIsSearching(true);
-    setSearchTerm("");
+  const fetchImages = useCallback(
+    async (searchTerm: string) => {
+      setIsSearching(true);
+      setSearchTerm("");
 
-    const timeout = new Promise<string[]>((resolve) =>
-      setTimeout(() => {
-        resolve([SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE]);
-      }, 300)
-    );
+      if (!hasSearched) {
+        setHasSearched(true);
+      }
 
-    const result = await timeout;
+      const timeout = new Promise<string[]>((resolve) =>
+        setTimeout(() => {
+          resolve([SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE]);
+        }, 300)
+      );
 
-    setUrls(result);
+      const result = await timeout;
 
-    setIsSearching(false);
-  }, []);
+      setUrls(result);
+
+      setIsSearching(false);
+    },
+    [hasSearched]
+  );
 
   return (
     <>
@@ -74,11 +84,12 @@ const Home: NextPage = () => {
       >
         <Center
           bgColor="#F7EDE8"
-          h="400px"
+          h={!hasSearched ? "50vh" : "400px"}
           flexDir="column"
           pos="relative"
           textAlign="center"
           zIndex={1}
+          transition="all 300ms ease-in"
         >
           <Heading
             fontWeight="700"
@@ -175,49 +186,56 @@ const Home: NextPage = () => {
           </InputGroup>
         </Center>
 
-        <Center mt="80px" flexDir="column">
-          <Box pos="relative" w="min-content">
-            <Heading
-              fontWeight="700"
-              fontSize="3rem"
-              display="inline-block"
-              pos="relative"
-            >
-              Results
-            </Heading>
-            <Box
-              as="span"
-              pos="absolute"
-              top={-12}
-              left={-14}
-              w="100px"
-              h="100px"
-            >
-              <Image
-                src="/sparkle.png"
-                layout="fill"
-                objectFit="contain"
-                objectPosition="left top"
-                alt=""
-              />
+        {hasSearched && (
+          <Center mt="80px" flexDir="column">
+            <Box pos="relative" w="min-content">
+              <Heading
+                fontWeight="700"
+                fontSize="3rem"
+                display="inline-block"
+                pos="relative"
+              >
+                Results
+              </Heading>
+              <Box
+                as="span"
+                pos="absolute"
+                top={-12}
+                left={-14}
+                w="100px"
+                h="100px"
+              >
+                <Image
+                  src="/sparkle.png"
+                  layout="fill"
+                  objectFit="contain"
+                  objectPosition="left top"
+                  alt=""
+                />
+              </Box>
             </Box>
-          </Box>
 
-          {isSearching ? (
-            <CircularProgress mt="60px" isIndeterminate color="#81ADC8" />
-          ) : (
-            <SimpleGrid
-              columns={{ base: 1, lg: 2 }}
-              columnGap="100px"
-              rowGap="50px"
-              mt="60px"
-            >
-              {urls.map((url) => (
-                <ImageWrapper key={url} url={url} />
-              ))}
-            </SimpleGrid>
-          )}
-        </Center>
+            {isSearching ? (
+              <HStack spacing="100px" mt="80px">
+                <Skeleton w="360px" h="360px" />
+                <Skeleton w="360px" h="360px" />
+              </HStack>
+            ) : urls.length === 0 ? (
+              <Text mt="80px">No images found yet</Text>
+            ) : (
+              <SimpleGrid
+                columns={{ base: 1, lg: 2 }}
+                columnGap="100px"
+                rowGap="50px"
+                mt="60px"
+              >
+                {urls.map((url) => (
+                  <ImageWrapper key={url} url={url} />
+                ))}
+              </SimpleGrid>
+            )}
+          </Center>
+        )}
       </main>
     </>
   );
