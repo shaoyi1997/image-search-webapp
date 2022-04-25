@@ -113,8 +113,6 @@ const Home: NextPage = () => {
   const [results, setResults] = useState<Result[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  console.log(results);
-
   const fetchImages = useCallback(
     async (searchTerm: string) => {
       setIsSearching(true);
@@ -215,6 +213,7 @@ const Home: NextPage = () => {
                 objectFit="cover"
                 objectPosition="right bottom"
                 alt=""
+                ml="auto"
               />
             </Box>
           </Heading>
