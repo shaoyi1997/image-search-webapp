@@ -2,7 +2,7 @@ import { SearchIcon } from "@chakra-ui/icons";
 import {
   Box,
   Center,
-  CircularProgress,
+  Image as ChakraImage,
   Heading,
   HStack,
   Input,
@@ -11,6 +11,17 @@ import {
   SimpleGrid,
   Skeleton,
   Text,
+  Button,
+  ButtonGroup,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverCloseButton,
+  PopoverContent,
+  PopoverFooter,
+  PopoverHeader,
+  PopoverTrigger,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import type { NextPage } from "next";
@@ -21,7 +32,12 @@ import { useCallback, useState } from "react";
 const SAMPLE_IMAGE =
   "https://images.unsplash.com/photo-1649888658347-b6a2d298a6e1?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=687&q=80";
 
-const ImageWrapper: React.FC<{ url: string }> = ({ url = SAMPLE_IMAGE }) => {
+const ImageWrapper: React.FC<{ result: Result; rank: number }> = ({
+  result,
+  rank,
+}) => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
   return (
     <Box
       as={motion.div}
@@ -33,17 +49,71 @@ const ImageWrapper: React.FC<{ url: string }> = ({ url = SAMPLE_IMAGE }) => {
       p="16px"
       borderRadius="8px"
       border="2px solid black"
+      pos="relative"
+      onHoverStart={onOpen}
+      onHoverEnd={onClose}
     >
-      <Image src={url} width="360px" height="360px" objectFit="cover" alt="" />
+      <Image
+        src={result.url}
+        width="360px"
+        height="360px"
+        objectFit="cover"
+        alt=""
+      />
+      <Popover
+        placement="right"
+        closeOnBlur={true}
+        closeDelay={0}
+        isOpen={isOpen}
+        onClose={onClose}
+      >
+        <PopoverTrigger>
+          <Button
+            pos="absolute"
+            top={0}
+            left={0}
+            bgColor="#F7EDE8"
+            transform="translate(-20%, -50%)"
+            _focus={{
+              outline: "none",
+              border: "none",
+            }}
+          >
+            {rank}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          color="white"
+          bg="blue.800"
+          borderColor="none"
+          _focus={{
+            outline: "none",
+            border: "none",
+          }}
+        >
+          <PopoverHeader fontWeight="bold" border="0">
+            Similarity = {(result.score * 100).toFixed(2)}%
+          </PopoverHeader>
+          <PopoverArrow />
+          <PopoverCloseButton />
+        </PopoverContent>
+      </Popover>
     </Box>
   );
 };
 
+interface Result {
+  url: string;
+  score: number;
+}
+
 const Home: NextPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [urls, setUrls] = useState<string[]>([]);
+  const [results, setResults] = useState<Result[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+
+  console.log(results);
 
   const fetchImages = useCallback(
     async (searchTerm: string) => {
@@ -54,15 +124,27 @@ const Home: NextPage = () => {
         setHasSearched(true);
       }
 
-      const timeout = new Promise<string[]>((resolve) =>
-        setTimeout(() => {
-          resolve([SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE]);
-        }, 300)
+      const body = new FormData();
+
+      body.append("queries", [searchTerm].toString());
+
+      const result = await fetch("http://localhost:6001/send_queries", {
+        method: "POST",
+        body,
+      });
+
+      const data = (await result.json()) as {
+        data: Array<{ url: string; score: string }>;
+      };
+
+      setResults(
+        data.data.map((r) => {
+          return {
+            ...r,
+            score: Number.parseFloat(r.score),
+          };
+        })
       );
-
-      const result = await timeout;
-
-      setUrls(result);
 
       setIsSearching(false);
     },
@@ -113,10 +195,9 @@ const Home: NextPage = () => {
               w="200px"
               h="300px"
             >
-              <Image
+              <ChakraImage
                 src="/headerImg.png"
-                layout="fill"
-                objectFit="contain"
+                objectFit="cover"
                 objectPosition="left bottom"
                 alt=""
               />
@@ -129,10 +210,9 @@ const Home: NextPage = () => {
               w="200px"
               h="100px"
             >
-              <Image
+              <ChakraImage
                 src="/headerImg2.png"
-                layout="fill"
-                objectFit="contain"
+                objectFit="cover"
                 objectPosition="right bottom"
                 alt=""
               />
@@ -220,7 +300,7 @@ const Home: NextPage = () => {
                 <Skeleton w="360px" h="360px" />
                 <Skeleton w="360px" h="360px" />
               </HStack>
-            ) : urls.length === 0 ? (
+            ) : results.length === 0 ? (
               <Text mt="80px">No images found yet</Text>
             ) : (
               <SimpleGrid
@@ -229,8 +309,8 @@ const Home: NextPage = () => {
                 rowGap="50px"
                 mt="60px"
               >
-                {urls.map((url) => (
-                  <ImageWrapper key={url} url={url} />
+                {results.map((r, i) => (
+                  <ImageWrapper key={r.url} result={r} rank={i + 1} />
                 ))}
               </SimpleGrid>
             )}
